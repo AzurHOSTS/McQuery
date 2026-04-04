@@ -66,6 +66,10 @@ Nous suivons la spécification de la conventions des commits.
 
 ---
 
+## Utilisation de l'IA
+- L'utilisation d'outils IA (Copilot, ChatGPT, Perplexity...) est autorisée.
+- Le contributeur reste responsable du code soumis et doit s'assurer qu'il ne reproduit pas de code sous licence incompatible.
+
 ## Pull Requests
 
 - Cible la branche `dev`, **jamais** `main` directement
