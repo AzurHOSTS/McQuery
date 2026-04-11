@@ -1,6 +1,10 @@
 package com.azurhosts.mcquery;
 
+import com.azurhosts.mcquery.logs.LogsManager;
+import com.azurhosts.mcquery.query.UDPServer;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.io.*;
 
 /**
  * MCQuery - Classe de démarrage du plugin.
@@ -18,14 +22,22 @@ public abstract class Bootstrap extends JavaPlugin {
     private static Bootstrap instance;
     private final static String version = "1.0.0";
 
+    private UDPServer udpServer;
+    private Thread udpThread;
+
     @Override
     public final void onEnable() {
         instance = this;
         onStart();
+        startQuery();
     }
     @Override
     public final void onDisable() {
         onStop();
+        if (udpServer != null ) {
+            udpServer.stop();
+        }
+
     }
 
     protected abstract void onStart();
@@ -36,6 +48,58 @@ public abstract class Bootstrap extends JavaPlugin {
 
     public static String getVersion() {
         return version;
+    }
+
+    private void startQuery() {
+        int port;
+
+        File portFile = new File(getDataFolder(), "port.txt");
+
+        try {
+            getDataFolder().mkdir();
+            portFile.createNewFile();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
+        try {
+            BufferedReader reader = new BufferedReader(new FileReader(portFile));
+            String line = reader.readLine();
+            reader.close();
+
+            if (line == null || !line.matches("\\d+")) {
+                LogsManager.Logger.error("port.txt ne contient pas un port valide <gray>(null ou pas des chiffres)</gray>");
+                getServer().getPluginManager().disablePlugin(this);
+                return;
+            }
+            port = Integer.parseInt(line.trim());
+
+        } catch (FileNotFoundException e) {
+            LogsManager.Logger.error("port.txt introuvable dans " + getDataFolder().getName());
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+
+        } catch (IOException e) {
+            LogsManager.Logger.error("Erreur de lecture de port.txt : " + e.getMessage());
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+
+        } catch (NumberFormatException e) {
+            LogsManager.Logger.error("port.txt ne contient pas un port valide");
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+
+        try {
+            udpServer = new UDPServer(port);
+            udpThread = new Thread(udpServer);
+            udpThread.setDaemon(true);
+            udpThread.start();
+            getLogger().info("UDP server démarré sur le port " + port);
+        } catch (Exception e) {
+            getLogger().severe("Impossible de démarrer le serveur UDP : " + e.getMessage());
+            getServer().getPluginManager().disablePlugin(this);
+        }
     }
 
 }
