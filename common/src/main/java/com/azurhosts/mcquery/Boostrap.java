@@ -1,6 +1,9 @@
 package com.azurhosts.mcquery;
 
+import com.azurhosts.mcquery.logs.LogsManager;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import java.util.logging.Level;
 
 /**
  * MCQuery - Classe de démarrage du plugin.
@@ -37,4 +40,5 @@ public abstract class Boostrap extends JavaPlugin {
     public static String getVersion() {
         return version;
     }
+
 }
