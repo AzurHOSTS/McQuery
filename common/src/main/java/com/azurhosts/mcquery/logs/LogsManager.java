@@ -1,7 +1,6 @@
 package com.azurhosts.mcquery.logs;
 
-import com.azurhosts.mcquery.Boostrap;
-import net.kyori.adventure.text.Component;
+import com.azurhosts.mcquery.Bootstrap;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.Bukkit;
 
@@ -45,7 +44,7 @@ public class LogsManager {
                 else if (level == Level.SEVERE) prefix = "<red>[ERROR]</red> ";
                 Bukkit.getConsoleSender().sendMessage(MINI.deserialize(prefix + message));
             } else {
-                Boostrap.getInstance().getLogger().log(level, stripMiniMessage(message));
+                Bootstrap.getInstance().getLogger().log(level, stripMiniMessage(message));
             }
         }
 

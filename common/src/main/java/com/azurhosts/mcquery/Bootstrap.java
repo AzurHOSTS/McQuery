@@ -1,9 +1,6 @@
 package com.azurhosts.mcquery;
 
-import com.azurhosts.mcquery.logs.LogsManager;
 import org.bukkit.plugin.java.JavaPlugin;
-
-import java.util.logging.Level;
 
 /**
  * MCQuery - Classe de démarrage du plugin.
@@ -16,9 +13,9 @@ import java.util.logging.Level;
  * @version 1.0.0
  **/
 
-public abstract class Boostrap extends JavaPlugin {
+public abstract class Bootstrap extends JavaPlugin {
 
-    private static Boostrap instance;
+    private static Bootstrap instance;
     private final static String version = "1.0.0";
 
     @Override
@@ -35,7 +32,7 @@ public abstract class Boostrap extends JavaPlugin {
     protected abstract void onStop();
 
     @SuppressWarnings("unchecked")
-    public static <T extends Boostrap> T getInstance() { return (T) instance;}
+    public static <T extends Bootstrap> T getInstance() { return (T) instance;}
 
     public static String getVersion() {
         return version;
