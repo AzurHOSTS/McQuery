@@ -10,7 +10,7 @@ dependencies {
 }
 
 tasks.shadowJar {
-    archiveBaseName.set("LagoonPlugin-bukkit")
+    archiveBaseName.set("McQuery-bukkit")
     archiveClassifier.set("")
     archiveVersion.set(version.toString())
 }
