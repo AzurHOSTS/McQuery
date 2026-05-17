@@ -37,7 +37,6 @@ public abstract class Bootstrap extends JavaPlugin {
         if (udpServer != null ) {
             udpServer.stop();
         }
-
     }
 
     protected abstract void onStart();
@@ -68,24 +67,32 @@ public abstract class Bootstrap extends JavaPlugin {
             reader.close();
 
             if (line == null || !line.matches("\\d+")) {
-                LogsManager.Logger.error("port.txt ne contient pas un port valide <gray>(null ou pas des chiffres)</gray>");
+                if (debugEnabled()) {
+                    LogsManager.Logger.error("port.txt ne contient pas un port valide <gray>(null ou pas des chiffres)</gray>");
+                }
                 getServer().getPluginManager().disablePlugin(this);
                 return;
             }
             port = Integer.parseInt(line.trim());
 
         } catch (FileNotFoundException e) {
-            LogsManager.Logger.error("port.txt introuvable dans " + getDataFolder().getName());
+            if (debugEnabled()) {
+                LogsManager.Logger.error("port.txt introuvable dans " + getDataFolder().getName());
+            }
             getServer().getPluginManager().disablePlugin(this);
             return;
 
         } catch (IOException e) {
-            LogsManager.Logger.error("Erreur de lecture de port.txt : " + e.getMessage());
+            if (debugEnabled()) {
+                LogsManager.Logger.error("Erreur de lecture de port.txt : " + e.getMessage());
+            }
             getServer().getPluginManager().disablePlugin(this);
             return;
 
         } catch (NumberFormatException e) {
-            LogsManager.Logger.error("port.txt ne contient pas un port valide");
+            if (debugEnabled()) {
+                LogsManager.Logger.error("port.txt ne contient pas un port valide");
+            }
             getServer().getPluginManager().disablePlugin(this);
             return;
         }
@@ -95,11 +102,19 @@ public abstract class Bootstrap extends JavaPlugin {
             udpThread = new Thread(udpServer);
             udpThread.setDaemon(true);
             udpThread.start();
-            getLogger().info("UDP server démarré sur le port " + port);
+            if (debugEnabled()) {
+                LogsManager.Logger.info("UDP server démarré sur le port " + port);
+            }
         } catch (Exception e) {
-            getLogger().severe("Impossible de démarrer le serveur UDP : " + e.getMessage());
+            if (debugEnabled()) {
+                LogsManager.Logger.error("Impossible de démarrer le serveur UDP : " + e.getMessage());
+            }
             getServer().getPluginManager().disablePlugin(this);
         }
+    }
+
+    public static boolean debugEnabled() {
+        return Bootstrap.getInstance().getConfig().getBoolean("debug.enable");
     }
 
 }

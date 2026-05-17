@@ -14,11 +14,11 @@ public class McQueryPlugin extends Bootstrap {
 
     @Override
     protected void onStart() {
-
+        saveDefaultConfig();
     }
 
     @Override
     protected void onStop() {
-
+        saveConfig();
     }
 }
