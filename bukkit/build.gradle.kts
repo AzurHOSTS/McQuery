@@ -5,7 +5,7 @@ plugins {
 version = "1.0.0"
 
 dependencies {
-    compileOnly("org.spigotmc:spigot-api:1.21-R0.1-SNAPSHOT")
+    compileOnly("org.spigotmc:spigot-api:26.1.2-R0.1-SNAPSHOT")
     implementation(project(":common"))
 }
 

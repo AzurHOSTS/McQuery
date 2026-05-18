@@ -1,4 +1,5 @@
 name: McQuery
 version: 1.0.0
 author: RedSavant
+api-version: '1.21'
 main: com.azurhosts.mcquery.McQueryPlugin
