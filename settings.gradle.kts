@@ -1,2 +1,2 @@
 rootProject.name = "McQuery"
-include("common", "bukkit")
+include("common", "bukkit", "paper")
