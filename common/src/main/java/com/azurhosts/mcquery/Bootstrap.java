@@ -2,9 +2,14 @@ package com.azurhosts.mcquery;
 
 import com.azurhosts.mcquery.logs.LogsManager;
 import com.azurhosts.mcquery.query.UDPServer;
+import org.bukkit.Bukkit;
+import org.bukkit.World;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 /**
  * MCQuery - Classe de démarrage du plugin.
@@ -22,6 +27,10 @@ public abstract class Bootstrap extends JavaPlugin {
     private static Bootstrap instance;
     private final static String version = "1.0.0";
 
+    public static final Map<String, Integer> WORLD_INDEX = new LinkedHashMap<>();
+
+    private volatile static boolean autoSave = true;
+
     private UDPServer udpServer;
     private Thread udpThread;
 
@@ -30,6 +39,8 @@ public abstract class Bootstrap extends JavaPlugin {
         instance = this;
         onStart();
         startQuery();
+        checkAutoSave();
+        buildWorldIndex();
     }
     @Override
     public final void onDisable() {
@@ -117,4 +128,17 @@ public abstract class Bootstrap extends JavaPlugin {
         return Bootstrap.getInstance().getConfig().getBoolean("debug.enable");
     }
 
+    public static boolean checkAutoSave() {
+        autoSave = Bukkit.getWorlds().stream().allMatch(World::isAutoSave);
+        return autoSave;
+    }
+
+    private static void buildWorldIndex() {
+        if (WORLD_INDEX.isEmpty()) {
+            int i = 0;
+            for (World world : Bukkit.getWorlds()) {
+                WORLD_INDEX.put(world.getName(), i++);
+            }
+        }
+    }
 }
