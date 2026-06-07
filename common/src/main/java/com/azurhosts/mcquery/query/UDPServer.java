@@ -4,6 +4,7 @@ import com.azurhosts.mcquery.Bootstrap;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.*;
 import org.bukkit.attribute.Attribute;
@@ -42,14 +43,24 @@ public class UDPServer implements Runnable {
 
     @Override
     public void run() {
-        byte[] buf = new byte[1024];
+        byte[] buf = new byte[4096];
         while (running) {
             try {
                 DatagramPacket packet = new DatagramPacket(buf, buf.length);
                 socket.receive(packet);
 
-                String instruction = new String(packet.getData(), 0, packet.getLength()).trim();
-                String response = handleInstruction(instruction);
+                String received = new String(packet.getData(), 0, packet.getLength()).trim();
+
+                JsonObject payload;
+                try {
+                    payload = JsonParser.parseString(received).getAsJsonObject();
+                } catch (Exception e) {
+                    payload = new JsonObject();
+                    payload.addProperty("instruction", received); // compat plain string
+                }
+
+                String instruction = payload.get("instruction").getAsString();
+                String response = handleInstruction(instruction, payload);
 
                 byte[] responseBytes = response.getBytes();
                 DatagramPacket reply = new DatagramPacket(
@@ -63,7 +74,7 @@ public class UDPServer implements Runnable {
         }
     }
 
-    private String handleInstruction(String instruction) {
+    private String handleInstruction(String instruction, JsonObject payload) {
         switch (instruction) {
             /* Players Infos */
             case "GET_PLAYERS" -> {
@@ -261,6 +272,29 @@ public class UDPServer implements Runnable {
                 root.add("plugins", plugins);
 
                 return new Gson().toJson(root);
+            }
+
+            case "SET_WORLD_AUTOSAVE" -> {
+                int worldId = payload.get("world_id").getAsInt();
+                boolean enabled = payload.get("enabled").getAsBoolean();
+                CompletableFuture<String> future = new CompletableFuture<>();
+                Bukkit.getScheduler().runTask(Bootstrap.getInstance(), () -> {
+                    World world = Bootstrap.getWorldById(worldId);
+                    if (world != null) {
+                        world.setAutoSave(enabled);
+                        future.complete("ok");
+                    } else {
+                        future.complete("world_not_found");
+                    }
+                });
+                try {
+                    String result = future.get(3, TimeUnit.SECONDS);
+                    JsonObject res = new JsonObject();
+                    res.addProperty("success", result.equals("ok"));
+                    if (!result.equals("ok")) res.addProperty("error", result);
+                    return new Gson().toJson(res);
+                } catch (Exception e) { return "{\"error\":\"timeout\"}";
+                }
             }
 
             default -> {

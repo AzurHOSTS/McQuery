@@ -141,4 +141,12 @@ public abstract class Bootstrap extends JavaPlugin {
             }
         }
     }
+
+    public static World getWorldById(int id) {
+        return WORLD_INDEX.entrySet().stream()
+                .filter(e -> e.getValue() == id)
+                .map(e -> Bukkit.getWorld(e.getKey()))
+                .findFirst()
+                .orElse(null);
+    }
 }
