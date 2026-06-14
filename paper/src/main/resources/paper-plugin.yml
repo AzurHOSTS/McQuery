@@ -1,4 +1,5 @@
 name: McQuery
 version: '1.0.0'
 main: com.azurhosts.mcquery.McQueryPaperPlugin
+folia-supported: true
 api-version: '26.1.2'

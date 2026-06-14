@@ -1,5 +1,7 @@
 package com.azurhosts.mcquery;
 
+import com.azurhosts.mcquery.logs.LogsManager;
+
 /**
  * MCQuery - Classe principale du plugin avec compatibilité Paper
  * Mainteneur : RedSavant, OxiWan (contact@azurhosts.com)
@@ -15,10 +17,27 @@ public class McQueryPaperPlugin extends Bootstrap{
     @Override
     protected void onStart() {
         saveDefaultConfig();
+        preparePlugin();
     }
 
     @Override
     protected void onStop() {
         saveConfig();
+    }
+
+    private void preparePlugin() {
+        if (!Bootstrap.debugEnabled()) return;
+
+        String nms = LogsManager.isFolia() ? "FOLIA"
+                : LogsManager.isPaper() ? "PAPER"
+                : "UNKNOWN";
+
+        String version = switch (nms) {
+            case "FOLIA" -> "Folia";
+            case "PAPER" -> "Paper";
+            default -> "CraftBukkit or unrecognized NMS";
+        };
+
+        LogsManager.Logger.info("NMS Version: " + version);
     }
 }

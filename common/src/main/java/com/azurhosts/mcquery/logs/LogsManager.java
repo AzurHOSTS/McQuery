@@ -54,11 +54,26 @@ public class LogsManager {
     }
 
     public static boolean isPaper() {
-        try { Class.forName("io.papermc.paper.configuration.Configuration"); return true; }
-        catch (Throwable ignored) { }
-        try { Class.forName("com.destroystokyo.paper.PaperConfig"); return true; }
-        catch (Throwable ignored) { }
+        try {
+            Class.forName("io.papermc.paper.configuration.Configuration");
+            return true;
+        }
+        catch (Throwable ignored) {}
+        try {
+            Class.forName("com.destroystokyo.paper.PaperConfig");
+            return true;
+        }
+        catch (Throwable ignored) {}
         String name = Bukkit.getName();
         return name != null && name.toLowerCase().contains("paper");
+    }
+
+    public static boolean isFolia() {
+        try {
+            Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
+            return true;
+        } catch (ClassNotFoundException e) {
+            return false;
+        }
     }
 }

@@ -1,6 +1,7 @@
 package com.azurhosts.mcquery.query;
 
 import com.azurhosts.mcquery.Bootstrap;
+import com.azurhosts.mcquery.logs.LogsManager;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -56,7 +57,7 @@ public class UDPServer implements Runnable {
                     payload = JsonParser.parseString(received).getAsJsonObject();
                 } catch (Exception e) {
                     payload = new JsonObject();
-                    payload.addProperty("instruction", received); // compat plain string
+                    payload.addProperty("instruction", received);
                 }
 
                 String instruction = payload.get("instruction").getAsString();
@@ -71,6 +72,14 @@ public class UDPServer implements Runnable {
             } catch (Exception e) {
                 if (running) e.printStackTrace();
             }
+        }
+    }
+
+    private void runOnMainThread(Runnable task) {
+        if (LogsManager.isFolia()) {
+            Bukkit.getGlobalRegionScheduler().run(Bootstrap.getInstance(), t -> task.run());
+        } else {
+            Bukkit.getScheduler().runTask(Bootstrap.getInstance(), task);
         }
     }
 
@@ -206,8 +215,8 @@ public class UDPServer implements Runnable {
                 memory.addProperty("total_mb", runtime.totalMemory() / 1048576L);
                 memory.addProperty("max_mb", runtime.maxMemory() / 1048576L);
 
-                CompletableFuture<JsonArray> worldsFuture = new CompletableFuture<>();
-                Bukkit.getScheduler().runTask(Bootstrap.getInstance(), () -> {
+                CompletableFuture<JsonObject> infoFuture = new CompletableFuture<>();
+                runOnMainThread(() -> {
                     JsonArray worlds = new JsonArray();
                     for (World world : Bukkit.getWorlds()) {
                         JsonObject w = new JsonObject();
@@ -227,58 +236,55 @@ public class UDPServer implements Runnable {
                         w.addProperty("auto_save", world.isAutoSave());
                         worlds.add(w);
                     }
-                    worldsFuture.complete(worlds);
+
+                    JsonArray plugins = new JsonArray();
+                    for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
+                        JsonObject pl = new JsonObject();
+                        pl.addProperty("name", plugin.getName());
+                        pl.addProperty("version", plugin.getDescription().getVersion());
+                        pl.addProperty("enabled", plugin.isEnabled());
+                        plugins.add(pl);
+                    }
+
+                    double[] tps = Bukkit.getTPS();
+                    JsonObject tpsObj = new JsonObject();
+                    tpsObj.addProperty("1m", Math.min(20.0, tps[0]));
+                    tpsObj.addProperty("5m", Math.min(20.0, tps[1]));
+                    tpsObj.addProperty("15m", Math.min(20.0, tps[2]));
+
+                    JsonObject root = new JsonObject();
+                    root.addProperty("type", "GET_SERVER_INFO");
+                    root.addProperty("timestamp", System.currentTimeMillis());
+                    root.addProperty("name", Bukkit.getServer().getName());
+                    root.addProperty("version", Bukkit.getVersion());
+                    root.addProperty("bukkit_version", Bukkit.getBukkitVersion());
+                    root.addProperty("minecraft_version", Bukkit.getMinecraftVersion());
+                    root.addProperty("motd", PlainTextComponentSerializer.plainText().serialize(Bukkit.motd()));
+                    root.addProperty("online_mode", Bukkit.getOnlineMode());
+                    root.addProperty("max_players", Bukkit.getMaxPlayers());
+                    root.addProperty("player_count", Bukkit.getOnlinePlayers().size());
+                    root.addProperty("whitelist_enabled", Bukkit.hasWhitelist());
+                    root.addProperty("global_autosave", Bootstrap.checkAutoSave());
+                    root.add("tps", tpsObj);
+                    root.add("memory", memory);
+                    root.add("worlds", worlds);
+                    root.add("plugins", plugins);
+
+                    infoFuture.complete(root);
                 });
 
-                JsonArray worlds;
                 try {
-                    worlds = worldsFuture.get(3, TimeUnit.SECONDS);
+                    return new Gson().toJson(infoFuture.get(3, TimeUnit.SECONDS));
                 } catch (Exception e) {
-                    worlds = new JsonArray();
+                    return "{\"error\":\"timeout\"}";
                 }
-
-                JsonObject root = new JsonObject();
-                root.addProperty("type", "GET_SERVER_INFO");
-                root.addProperty("timestamp", System.currentTimeMillis());
-                root.addProperty("name", Bukkit.getServer().getName());
-                root.addProperty("version", Bukkit.getVersion());
-                root.addProperty("bukkit_version", Bukkit.getBukkitVersion());
-                root.addProperty("minecraft_version", Bukkit.getMinecraftVersion());
-                root.addProperty("motd", PlainTextComponentSerializer.plainText().serialize(Bukkit.motd()));
-                root.addProperty("online_mode", Bukkit.getOnlineMode());
-                root.addProperty("max_players", Bukkit.getMaxPlayers());
-                root.addProperty("player_count", Bukkit.getOnlinePlayers().size());
-                root.addProperty("whitelist_enabled", Bukkit.hasWhitelist());
-                root.addProperty("global_autosave", Bootstrap.checkAutoSave());
-
-                double[] tps = Bukkit.getTPS();
-                JsonObject tpsObj = new JsonObject();
-                tpsObj.addProperty("1m", Math.min(20.0, tps[0]));
-                tpsObj.addProperty("5m", Math.min(20.0, tps[1]));
-                tpsObj.addProperty("15m", Math.min(20.0, tps[2]));
-                root.add("tps", tpsObj);
-
-                root.add("memory", memory);
-                root.add("worlds", worlds);
-
-                JsonArray plugins = new JsonArray();
-                for (Plugin plugin : Bukkit.getPluginManager().getPlugins()) {
-                    JsonObject pl = new JsonObject();
-                    pl.addProperty("name", plugin.getName());
-                    pl.addProperty("version", plugin.getDescription().getVersion());
-                    pl.addProperty("enabled", plugin.isEnabled());
-                    plugins.add(pl);
-                }
-                root.add("plugins", plugins);
-
-                return new Gson().toJson(root);
             }
 
             case "SET_WORLD_AUTOSAVE" -> {
                 int worldId = payload.get("world_id").getAsInt();
                 boolean enabled = payload.get("enabled").getAsBoolean();
                 CompletableFuture<String> future = new CompletableFuture<>();
-                Bukkit.getScheduler().runTask(Bootstrap.getInstance(), () -> {
+                runOnMainThread(() -> {
                     World world = Bootstrap.getWorldById(worldId);
                     if (world != null) {
                         world.setAutoSave(enabled);
@@ -293,7 +299,8 @@ public class UDPServer implements Runnable {
                     res.addProperty("success", result.equals("ok"));
                     if (!result.equals("ok")) res.addProperty("error", result);
                     return new Gson().toJson(res);
-                } catch (Exception e) { return "{\"error\":\"timeout\"}";
+                } catch (Exception e) {
+                    return "{\"error\":\"timeout\"}";
                 }
             }
 
