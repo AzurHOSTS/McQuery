@@ -36,6 +36,7 @@ import java.util.zip.GZIPOutputStream;
  * Distribué sous GNU General Public License v3.0
  * Voir LICENSE, CONTRIBUTING.md pour plus de détails.
  * NOTICE (GPL v3 Section 7b) : L'attribution au mainteneur doit être conservée dans toute redistribution.
+ *
  **/
 
 public class UDPServer implements Runnable {
@@ -67,7 +68,6 @@ public class UDPServer implements Runnable {
                 new Thread(() -> {
                     try {
                         String received = new String(data, StandardCharsets.UTF_8).trim();
-                        LogsManager.Logger.info("[McQuery] Paquet reçu de " + address + ":" + clientPort + " → " + received);
 
                         JsonObject payload;
                         try {
@@ -78,19 +78,29 @@ public class UDPServer implements Runnable {
                         }
 
                         String instruction = payload.get("instruction").getAsString();
-                        LogsManager.Logger.info("[McQuery] Instruction: " + instruction);
+
+                        if (Bootstrap.debugEnabled()) {
+                            LogsManager.Logger.info("[McQuery] Paquet reçu de " + address + ":" + clientPort + " → " + received);
+                            LogsManager.Logger.info("[McQuery] Instruction: " + instruction);
+                        }
 
                         String response = handleInstruction(instruction, payload);
 
                         byte[] responseBytes = compress(response);
-                        LogsManager.Logger.info("[McQuery] Réponse prête, taille brute=" + response.getBytes(StandardCharsets.UTF_8).length + " bytes → compressé=" + responseBytes.length + " bytes");
+
+                        if (Bootstrap.debugEnabled()) {
+                            LogsManager.Logger.info("[McQuery] Réponse prête, taille brute=" + response.getBytes(StandardCharsets.UTF_8).length + " bytes → compressé=" + responseBytes.length + " bytes");
+                        }
 
                         DatagramPacket reply = new DatagramPacket(
                                 responseBytes, responseBytes.length,
                                 address, clientPort
                         );
                         socket.send(reply);
-                        LogsManager.Logger.info("[McQuery] Réponse envoyée à " + address + ":" + clientPort);
+
+                        if (Bootstrap.debugEnabled()) {
+                            LogsManager.Logger.info("[McQuery] Réponse envoyée à " + address + ":" + clientPort);
+                        }
 
                     } catch (Exception e) {
                         LogsManager.Logger.error("[McQuery] Erreur dans thread handler: " + e.getMessage());
