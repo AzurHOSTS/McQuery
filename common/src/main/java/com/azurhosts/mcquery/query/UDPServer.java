@@ -136,7 +136,7 @@ public class UDPServer implements Runnable {
     private String handleInstruction(String instruction, JsonObject payload) {
         switch (instruction) {
 
-            /* Players — liste légère */
+            /* Players */
             case "GET_PLAYERS" -> {
                 CompletableFuture<JsonObject> future = new CompletableFuture<>();
                 runOnMainThread(() -> {
@@ -192,7 +192,7 @@ public class UDPServer implements Runnable {
                 }
             }
 
-            /* Player — données complètes par UUID */
+            /* Player */
             case "GET_PLAYER_DATA" -> {
                 if (!payload.has("uuid")) return "{\"error\":\"missing_uuid\"}";
                 String uuidStr = payload.get("uuid").getAsString();
@@ -430,6 +430,71 @@ public class UDPServer implements Runnable {
                     if (!result.equals("ok")) res.addProperty("error", result);
                     return new Gson().toJson(res);
                 } catch (Exception e) {
+                    return "{\"error\":\"timeout\"}";
+                }
+            }
+
+            case "SET_INVENTORY_ITEM" -> {
+                if (!payload.has("player") || !payload.has("slot_index")
+                        || !payload.has("item") || !payload.has("amount")) {
+                    return "{\"error\":\"missing_parameters\"}";
+                }
+
+                String playerName = payload.get("player").getAsString();
+                int slotIndex = payload.get("slot_index").getAsInt();
+                String materialName = payload.get("item").getAsString();
+                int amount = payload.get("amount").getAsInt();
+                boolean overrideItem = payload.has("override_item")
+                        && payload.get("override_item").getAsBoolean();
+
+                Material material = Material.matchMaterial(materialName);
+                if (material == null || !material.isItem() || material == Material.AIR) {
+                    return "{\"error\":\"invalid_item\"}";
+                }
+                if (amount < 1 || amount > material.getMaxStackSize()) {
+                    return "{\"error\":\"invalid_amount\"}";
+                }
+
+                CompletableFuture<String> future = new CompletableFuture<>();
+                runOnMainThread(() -> {
+                    try {
+                        Player player = Bukkit.getPlayerExact(playerName);
+                        if (player == null) {
+                            future.complete("player_not_found");
+                            return;
+                        }
+                        if (slotIndex < 0 || slotIndex > 40) {
+                            future.complete("invalid_slot");
+                            return;
+                        }
+
+                        ItemStack currentItem = player.getInventory().getItem(slotIndex);
+                        if (currentItem != null && currentItem.getType() != Material.AIR && !overrideItem) {
+                            future.complete("slot_not_empty");
+                            return;
+                        }
+
+                        player.getInventory().setItem(slotIndex, new ItemStack(material, amount));
+                        future.complete("ok");
+                    } catch (Exception e) {
+                        LogsManager.Logger.error("[McQuery] SET_INVENTORY_ITEM exception: " + e.getMessage());
+                        future.complete("error");
+                    }
+                });
+
+                try {
+                    String result = future.get(3, TimeUnit.SECONDS);
+                    JsonObject res = new JsonObject();
+                    res.addProperty("success", result.equals("ok"));
+                    res.addProperty("player", playerName);
+                    res.addProperty("slot", slotIndex);
+                    res.addProperty("item", material.name());
+                    res.addProperty("amount", amount);
+                    res.addProperty("override_item", overrideItem);
+                    if (!result.equals("ok")) res.addProperty("error", result);
+                    return new Gson().toJson(res);
+                } catch (Exception e) {
+                    LogsManager.Logger.error("[McQuery] SET_INVENTORY_ITEM timeout: " + e.getMessage());
                     return "{\"error\":\"timeout\"}";
                 }
             }
